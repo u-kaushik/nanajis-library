@@ -16,7 +16,8 @@ export async function GET(request: Request) {
     const rows = await sql`
       SELECT * FROM documents
       WHERE title ILIKE ${'%' + q + '%'}
-      ORDER BY title ASC LIMIT 100
+         OR display_title ILIKE ${'%' + q + '%'}
+      ORDER BY COALESCE(display_title, title) ASC LIMIT 100
     `;
     return NextResponse.json(rows);
   }
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
 
   // Return category summary grouped by collection + category
   const rows = await sql`
-    SELECT collection, category, COUNT(*)::int AS count
+    SELECT collection, category, MIN(display_category) AS display_category, COUNT(*)::int AS count
     FROM documents
     GROUP BY collection, category
     ORDER BY collection ASC, count DESC

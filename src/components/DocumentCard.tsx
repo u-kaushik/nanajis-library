@@ -21,8 +21,17 @@ export default function DocumentCard({ document: doc }: { document: Document }) 
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm text-gray-900 dark:text-gray-100 group-hover:text-amber-800 dark:group-hover:text-amber-300 line-clamp-2 leading-snug">
-            {doc.title}
+            {doc.display_title ?? doc.title}
           </p>
+          {doc.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {doc.tags.slice(0, 3).map(tag => (
+                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
           <p className="text-xs text-gray-400 mt-1">
             {doc.file_size_bytes ? formatSize(doc.file_size_bytes) : ''}
           </p>

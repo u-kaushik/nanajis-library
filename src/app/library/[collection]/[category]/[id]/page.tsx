@@ -10,9 +10,13 @@ const PdfViewer = dynamic(() => import('@/components/PdfViewer'), { ssr: false }
 interface DocMeta {
   id: string;
   title: string;
+  display_title?: string | null;
   collection: string;
   category: string;
+  display_category?: string | null;
   file_size_bytes: number;
+  tags: string[];
+  language: string;
 }
 
 export default function DocumentViewerPage() {
@@ -54,11 +58,29 @@ export default function DocumentViewerPage() {
           </svg>
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="font-semibold text-sm leading-tight truncate">{doc?.title || '…'}</h1>
-          <p className="text-amber-300 text-xs mt-0.5">
-            {category}
-            {doc && ` · ${formatSize(doc.file_size_bytes)}`}
-          </p>
+          <h1 className="font-semibold text-sm leading-tight truncate">
+            {doc ? (doc.display_title ?? doc.title) : '…'}
+          </h1>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <span className="text-amber-300 text-xs">
+              {doc?.display_category ?? category}
+              {doc && ` · ${formatSize(doc.file_size_bytes)}`}
+            </span>
+            {doc?.language && doc.language !== 'en' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-700 text-amber-100">
+                {doc.language === 'hi' ? 'Hindi' : doc.language}
+              </span>
+            )}
+          </div>
+          {doc?.tags && doc.tags.length > 0 && (
+            <div className="flex gap-1 mt-1 flex-wrap">
+              {doc.tags.slice(0, 4).map(tag => (
+                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-800 text-amber-200">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         {fileUrl && (
           <a

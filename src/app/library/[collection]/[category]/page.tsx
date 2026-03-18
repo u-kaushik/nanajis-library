@@ -35,7 +35,9 @@ export default function CategoryPage() {
             </svg>
           </Link>
           <div>
-            <h1 className="font-bold text-base leading-tight">{category}</h1>
+            <h1 className="font-bold text-base leading-tight">
+            {docs[0]?.display_category ?? category}
+          </h1>
             <p className="text-amber-300 text-xs">{collection}</p>
           </div>
           {!loading && (
@@ -62,12 +64,19 @@ export default function CategoryPage() {
                   <span className="text-red-600 dark:text-red-400 text-xs font-bold">PDF</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-amber-800 dark:group-hover:text-amber-300 truncate leading-snug">
-                    {doc.title}
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-amber-800 dark:group-hover:text-amber-300 leading-snug line-clamp-2">
+                    {doc.display_title ?? doc.title}
                   </p>
-                  {doc.file_size_bytes > 0 && (
-                    <p className="text-xs text-gray-400 mt-0.5">{formatSize(doc.file_size_bytes)}</p>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {doc.file_size_bytes > 0 && (
+                      <span className="text-xs text-gray-400">{formatSize(doc.file_size_bytes)}</span>
+                    )}
+                    {doc.tags?.slice(0, 2).map(tag => (
+                      <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <svg className="w-4 h-4 text-gray-300 group-hover:text-amber-500 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

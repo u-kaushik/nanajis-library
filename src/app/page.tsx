@@ -5,41 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SearchBar from '@/components/SearchBar';
 import DocumentCard from '@/components/DocumentCard';
+import { Document } from '@/lib/types';
 
 interface CategoryGroup {
   collection: string;
   category: string;
+  display_category: string | null;
   count: number;
 }
 
-interface Document {
-  id: string;
-  title: string;
-  collection: string;
-  category: string;
-  storage_path: string;
-  file_size_bytes: number;
-  created_at: string;
-}
 
-const CATEGORY_LABELS: Record<string, string> = {
-  'POEMS index': 'Poetry & Literature',
-  'Poems': 'Poetry',
-  'Spiritual DIRECTORY': 'Spiritual & Philosophy',
-  'ARTICLES wri BACKUP': 'Articles & Essays',
-  'Articles 42': 'Articles',
-  'ABHINAV ZIP': "Abhinav's Collection",
-  'Sibani': "Sibani's Collection",
-  'BK HINDUTVA': 'Hindutva & History',
-  'HINDUTVA 2': 'History II',
-  'USA': 'Correspondence',
-  'Letters': 'Letters',
-  'gk': 'General Knowledge',
-};
-
-function categoryLabel(cat: string) {
-  return CATEGORY_LABELS[cat] ?? cat;
-}
 
 export default function Home() {
   const router = useRouter();
@@ -141,7 +116,7 @@ export default function Home() {
                       className="group p-4 bg-white dark:bg-gray-900 border border-amber-100 dark:border-gray-700 rounded-xl hover:border-amber-400 hover:shadow-md transition-all"
                     >
                       <p className="font-medium text-sm text-gray-900 dark:text-gray-100 group-hover:text-amber-800 dark:group-hover:text-amber-300 leading-snug">
-                        {categoryLabel(g.category)}
+                        {g.display_category ?? g.category}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">{g.count} documents</p>
                     </Link>

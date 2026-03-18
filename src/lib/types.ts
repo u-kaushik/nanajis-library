@@ -1,10 +1,14 @@
 export interface Document {
   id: string;
   title: string;
+  display_title?: string | null;
   collection: string;
   category: string;
+  display_category?: string | null;
   storage_path: string;
   file_size_bytes: number;
+  tags: string[];
+  language: string;
   created_at: string;
 }
 
