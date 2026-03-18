@@ -17,6 +17,19 @@ export async function GET(
 
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  // Fetch from R2 server-side and stream back — avoids browser CORS issues
   const signedUrl = await getSignedViewUrl(doc.storage_path);
-  return NextResponse.redirect(signedUrl);
+  const r2Res = await fetch(signedUrl);
+
+  if (!r2Res.ok) {
+    return NextResponse.json({ error: 'File unavailable' }, { status: 502 });
+  }
+
+  return new NextResponse(r2Res.body, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${doc.title}.pdf"`,
+      'Cache-Control': 'private, max-age=3600',
+    },
+  });
 }
