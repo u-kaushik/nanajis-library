@@ -17,6 +17,8 @@ interface DocMeta {
   file_size_bytes: number;
   tags: string[];
   language: string;
+  page_count?: number | null;
+  word_count?: number | null;
 }
 
 export default function DocumentViewerPage() {
@@ -64,7 +66,8 @@ export default function DocumentViewerPage() {
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className="text-amber-300 text-xs">
               {doc?.display_category ?? category}
-              {doc && ` · ${formatSize(doc.file_size_bytes)}`}
+              {doc?.page_count && ` · ${doc.page_count} pp`}
+              {doc && !doc.page_count && ` · ${formatSize(doc.file_size_bytes)}`}
             </span>
             {doc?.language && doc.language !== 'en' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-700 text-amber-100">

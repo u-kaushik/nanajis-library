@@ -9,6 +9,8 @@ export interface Document {
   file_size_bytes: number;
   tags: string[];
   language: string;
+  page_count?: number | null;
+  word_count?: number | null;
   created_at: string;
 }
 
