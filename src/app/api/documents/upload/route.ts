@@ -1,30 +1,31 @@
-import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
-import { addDocument } from "@/lib/documents";
-import { Document } from "@/lib/types";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/auth';
+import sql from '@/lib/db';
+import { uploadFile } from '@/lib/storage';
 
 export async function POST(request: Request) {
-  const formData = await request.formData();
-  const file = formData.get("file") as File | null;
+  const session = await verifySession(await cookies());
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (!file) {
-    return NextResponse.json({ error: "No file provided" }, { status: 400 });
-  }
+  const formData = await request.formData();
+  const file = formData.get('file') as File | null;
+  const collection = (formData.get('collection') as string) || 'Uploads';
+  const category = (formData.get('category') as string) || 'Uncategorized';
+
+  if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const id = randomUUID();
+  const title = file.name.replace(/\.[^.]+$/, '');
+  const storagePath = `${collection}/${category}/${file.name}`;
 
-  const doc: Document = {
-    id,
-    name: file.name.replace(/\.[^.]+$/, ""),
-    originalName: file.name,
-    size: file.size,
-    mimeType: file.type || "application/octet-stream",
-    uploadedAt: new Date().toISOString(),
-    tags: [],
-  };
+  await uploadFile(storagePath, buffer, file.type || 'application/pdf');
 
-  await addDocument(doc, buffer);
+  const rows = await sql`
+    INSERT INTO documents (title, collection, category, storage_path, file_size_bytes)
+    VALUES (${title}, ${collection}, ${category}, ${storagePath}, ${file.size})
+    RETURNING *
+  `;
 
-  return NextResponse.json(doc, { status: 201 });
+  return NextResponse.json(rows[0], { status: 201 });
 }

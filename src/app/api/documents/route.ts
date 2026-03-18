@@ -1,32 +1,50 @@
-import { NextResponse } from "next/server";
-import { getAllDocuments, deleteDocument } from "@/lib/documents";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/auth';
+import sql from '@/lib/db';
 
 export async function GET(request: Request) {
+  const session = await verifySession(await cookies());
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get("q")?.toLowerCase() || "";
+  const q = searchParams.get('q') ?? '';
+  const collection = searchParams.get('collection') ?? '';
+  const category = searchParams.get('category') ?? '';
 
-  let docs = await getAllDocuments();
-
-  if (query) {
-    docs = docs.filter(
-      (doc) =>
-        doc.name.toLowerCase().includes(query) ||
-        doc.originalName.toLowerCase().includes(query) ||
-        doc.tags.some((tag) => tag.toLowerCase().includes(query))
-    );
+  if (q) {
+    const rows = await sql`
+      SELECT * FROM documents
+      WHERE title ILIKE ${'%' + q + '%'}
+      ORDER BY title ASC LIMIT 100
+    `;
+    return NextResponse.json(rows);
   }
 
-  return NextResponse.json(docs);
-}
-
-export async function DELETE(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-
-  if (!id) {
-    return NextResponse.json({ error: "Missing document id" }, { status: 400 });
+  if (category && collection) {
+    const rows = await sql`
+      SELECT * FROM documents
+      WHERE collection = ${collection} AND category = ${category}
+      ORDER BY title ASC
+    `;
+    return NextResponse.json(rows);
   }
 
-  await deleteDocument(id);
-  return NextResponse.json({ success: true });
+  if (collection) {
+    const rows = await sql`
+      SELECT * FROM documents
+      WHERE collection = ${collection}
+      ORDER BY category ASC, title ASC
+    `;
+    return NextResponse.json(rows);
+  }
+
+  // Return category summary grouped by collection + category
+  const rows = await sql`
+    SELECT collection, category, COUNT(*)::int AS count
+    FROM documents
+    GROUP BY collection, category
+    ORDER BY collection ASC, count DESC
+  `;
+  return NextResponse.json(rows);
 }

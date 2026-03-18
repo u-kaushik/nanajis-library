@@ -1,49 +1,108 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import SearchBar from "@/components/SearchBar";
-import DocumentCard from "@/components/DocumentCard";
-import UploadModal from "@/components/UploadModal";
-import { Document } from "@/lib/types";
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import SearchBar from '@/components/SearchBar';
+import DocumentCard from '@/components/DocumentCard';
+
+interface CategoryGroup {
+  collection: string;
+  category: string;
+  count: number;
+}
+
+interface Document {
+  id: string;
+  title: string;
+  collection: string;
+  category: string;
+  storage_path: string;
+  file_size_bytes: number;
+  created_at: string;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  'POEMS index': 'Poetry & Literature',
+  'Poems': 'Poetry',
+  'Spiritual DIRECTORY': 'Spiritual & Philosophy',
+  'ARTICLES wri BACKUP': 'Articles & Essays',
+  'Articles 42': 'Articles',
+  'ABHINAV ZIP': "Abhinav's Collection",
+  'Sibani': "Sibani's Collection",
+  'BK HINDUTVA': 'Hindutva & History',
+  'HINDUTVA 2': 'History II',
+  'USA': 'Correspondence',
+  'Letters': 'Letters',
+  'gk': 'General Knowledge',
+};
+
+function categoryLabel(cat: string) {
+  return CATEGORY_LABELS[cat] ?? cat;
+}
 
 export default function Home() {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [search, setSearch] = useState("");
-  const [showUpload, setShowUpload] = useState(false);
+  const router = useRouter();
+  const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [searchResults, setSearchResults] = useState<Document[] | null>(null);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const fetchDocuments = useCallback(async () => {
+  const fetchGroups = useCallback(async () => {
     setLoading(true);
-    const params = search ? `?q=${encodeURIComponent(search)}` : "";
-    const res = await fetch(`/api/documents${params}`);
-    const data = await res.json();
-    setDocuments(data);
+    const res = await fetch('/api/documents');
+    if (res.status === 401) { router.push('/login'); return; }
+    setGroups(await res.json());
     setLoading(false);
-  }, [search]);
+  }, [router]);
+
+  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+
+  const runSearch = useCallback(async (q: string) => {
+    if (!q.trim()) { setSearchResults(null); return; }
+    setLoading(true);
+    const res = await fetch(`/api/documents?q=${encodeURIComponent(q)}`);
+    setSearchResults(await res.json());
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
+    const t = setTimeout(() => runSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search, runSearch]);
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this document?")) return;
-    await fetch(`/api/documents?id=${id}`, { method: "DELETE" });
-    fetchDocuments();
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
   }
 
+  // Group by collection
+  const byCollection = groups.reduce<Record<string, CategoryGroup[]>>((acc, g) => {
+    if (!acc[g.collection]) acc[g.collection] = [];
+    acc[g.collection].push(g);
+    return acc;
+  }, {});
+
+  const totalDocs = groups.reduce((s, g) => s + g.count, 0);
+
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+    <div className="min-h-screen bg-amber-50 dark:bg-gray-950">
+      <header className="bg-amber-900 dark:bg-gray-900 text-white shadow">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-foreground">
-            Nanaji&apos;s Library
-          </h1>
-          <button
-            onClick={() => setShowUpload(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            + Upload
-          </button>
+          <div>
+            <h1 className="text-xl font-bold">Nanaji&apos;s Library</h1>
+            {totalDocs > 0 && (
+              <p className="text-amber-300 text-xs mt-0.5">{totalDocs.toLocaleString()} documents</p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/chat" className="text-sm px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-600 transition-colors">
+              Ask AI
+            </Link>
+            <button onClick={handleLogout} className="text-sm text-amber-300 hover:text-white transition-colors">
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -53,46 +112,46 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <p className="text-center text-gray-500 py-12">Loading...</p>
-        ) : documents.length === 0 ? (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto w-16 h-16 text-gray-300 dark:text-gray-600 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-              />
-            </svg>
-            <p className="text-gray-500 dark:text-gray-400">
-              {search
-                ? "No documents match your search."
-                : "No documents yet. Upload your first document!"}
-            </p>
+          <p className="text-center text-gray-500 py-12">Loading…</p>
+        ) : searchResults !== null ? (
+          /* Search results */
+          <div>
+            <p className="text-sm text-gray-500 mb-4">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;</p>
+            {searchResults.length === 0 ? (
+              <p className="text-center text-gray-400 py-12">No documents found.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {searchResults.map(doc => <DocumentCard key={doc.id} document={doc} />)}
+              </div>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {documents.map((doc) => (
-              <DocumentCard
-                key={doc.id}
-                document={doc}
-                onDelete={handleDelete}
-              />
+          /* Collection grid */
+          <div className="space-y-8">
+            {Object.entries(byCollection).map(([collection, cats]) => (
+              <div key={collection}>
+                <h2 className="text-base font-semibold text-amber-900 dark:text-amber-200 mb-3 pb-1 border-b border-amber-200 dark:border-gray-700">
+                  {collection}
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {cats.map(g => (
+                    <Link
+                      key={g.category}
+                      href={`/library/${encodeURIComponent(collection)}/${encodeURIComponent(g.category)}`}
+                      className="group p-4 bg-white dark:bg-gray-900 border border-amber-100 dark:border-gray-700 rounded-xl hover:border-amber-400 hover:shadow-md transition-all"
+                    >
+                      <p className="font-medium text-sm text-gray-900 dark:text-gray-100 group-hover:text-amber-800 dark:group-hover:text-amber-300 leading-snug">
+                        {categoryLabel(g.category)}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">{g.count} documents</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
       </main>
-
-      <UploadModal
-        open={showUpload}
-        onClose={() => setShowUpload(false)}
-        onUploaded={fetchDocuments}
-      />
     </div>
   );
 }
