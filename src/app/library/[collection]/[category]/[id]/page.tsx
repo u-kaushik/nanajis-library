@@ -3,55 +3,82 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+const PdfViewer = dynamic(() => import('@/components/PdfViewer'), { ssr: false });
+
+interface DocMeta {
+  id: string;
+  title: string;
+  collection: string;
+  category: string;
+  file_size_bytes: number;
+}
 
 export default function DocumentViewerPage() {
   const params = useParams();
   const collection = decodeURIComponent(params.collection as string);
   const category = decodeURIComponent(params.category as string);
   const id = params.id as string;
-  const [title, setTitle] = useState('');
+  const [doc, setDoc] = useState<DocMeta | null>(null);
   const [fileUrl, setFileUrl] = useState('');
 
   useEffect(() => {
-    // Fetch metadata to get the title
     fetch(`/api/documents?collection=${encodeURIComponent(collection)}&category=${encodeURIComponent(category)}`)
       .then(r => r.json())
-      .then((docs: Array<{ id: string; title: string }>) => {
-        const doc = docs.find(d => d.id === id);
-        if (doc) setTitle(doc.title);
+      .then((docs: DocMeta[]) => {
+        const found = docs.find(d => d.id === id);
+        if (found) setDoc(found);
       });
-    // The signed URL comes from the [id] route via redirect
     setFileUrl(`/api/documents/${id}`);
   }, [id, collection, category]);
 
+  function formatSize(bytes: number) {
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-950">
-      <header className="bg-amber-900 dark:bg-gray-900 text-white shadow px-4 py-3 flex items-center gap-3 flex-shrink-0">
+    <div className="flex flex-col h-screen">
+      {/* Reading progress bar (mounted via PdfViewer) */}
+      <div id="reading-progress" style={{ width: 0 }} className="fixed top-0 left-0 h-[3px] bg-gradient-to-r from-amber-800 to-amber-500 z-50 transition-[width] duration-100" />
+
+      {/* Header */}
+      <header className="bg-amber-900 dark:bg-gray-900 text-white shadow px-4 py-3 flex items-center gap-3 flex-shrink-0 z-10">
         <Link
           href={`/library/${encodeURIComponent(collection)}/${encodeURIComponent(category)}`}
-          className="text-amber-300 hover:text-white transition-colors"
+          className="text-amber-300 hover:text-white transition-colors flex-shrink-0"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="font-medium text-sm flex-1 truncate">{title || 'Loading…'}</h1>
-        <a
-          href={fileUrl}
-          download
-          className="text-xs px-3 py-1.5 rounded bg-amber-700 hover:bg-amber-600 transition-colors"
-        >
-          Download
-        </a>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-semibold text-sm leading-tight truncate">{doc?.title || '…'}</h1>
+          <p className="text-amber-300 text-xs mt-0.5">
+            {category}
+            {doc && ` · ${formatSize(doc.file_size_bytes)}`}
+          </p>
+        </div>
+        {fileUrl && (
+          <a
+            href={fileUrl}
+            download={doc?.title}
+            className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-600 transition-colors"
+          >
+            Download
+          </a>
+        )}
       </header>
 
+      {/* PDF Viewer */}
       <div className="flex-1 overflow-hidden">
-        {fileUrl && (
-          <iframe
-            src={fileUrl}
-            className="w-full h-full border-0"
-            title={title}
-          />
+        {fileUrl ? (
+          <PdfViewer url={fileUrl} title={doc?.title || ''} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="w-6 h-6 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+          </div>
         )}
       </div>
     </div>
